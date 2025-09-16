@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<salt-grain>
+ <name>KLayoutPluginUtils</name>
+ <token/>
+ <hidden>true</hidden>
+ <version>0.1</version>
+ <api-version/>
+ <title>Utility Library for KLayout Plugins</title>
+ <doc>Utility Python package used by various IIC KLayout Plugins</doc>
+ <doc-url>https://github.com/iic-jku/klayout-plugin-utils</doc-url>
+ <url/>
+ <license>GPLv3</license>
+ <author>Martin Jan Köhler</author>
+ <author-contact/>
+ <authored-time/>
+ <installed-time></installed-time>
+ <icon></icon>
+ <screenshot></screenshot>
+</salt-grain>
