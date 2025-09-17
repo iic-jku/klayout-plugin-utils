@@ -16,6 +16,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #--------------------------------------------------------------------------------
 
+from datetime import datetime
 import os
 import pya
 
@@ -25,7 +26,9 @@ import pya
 #       even when debugging is turned off, especially in hot spots 
 def debug(*args, **kwargs):
     if Debugging.DEBUG:
-        print(*args, **kwargs)
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d %H:%M:%S") + f".{now.microsecond // 1000:03d}"
+        print(timestamp, *args, **kwargs)
 
 
 class Debugging:
