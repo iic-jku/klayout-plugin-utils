@@ -22,6 +22,7 @@ from typing import *
 import pya
 
 from klayout_plugin_utils.debugging import debug, Debugging
+from klayout_plugin_utils.event_loop import EventLoop
 from klayout_plugin_utils.str_enum_compat import StrEnum
 
 
@@ -141,23 +142,8 @@ class EditorOptions:
         # NOTE: if we directly call the Editor Options menu action
         #       the GUI immediately will switch back to the Librariew view
         #       so we enqueue it into the event loop
-
-        mw = pya.Application.instance().main_window()
+        EventLoop.defer(lambda: pya.MainWindow.instance().call_menu('cm_edit_options'))
     
-        def on_timeout():
-            mw.call_menu('cm_edit_options')
-            if getattr(cls, "_defer_timer", None):
-                try:
-                    cls._defer_timer._destroy()
-                except RuntimeError:
-                    pass  # already deleted by Qt
-                cls._defer_timer = None
-        
-        cls._defer_timer = pya.QTimer(mw)
-        cls._defer_timer.setSingleShot(True)
-        cls._defer_timer.timeout = on_timeout
-        cls._defer_timer.start(0)
-                
     def snap_to_grid(self, point: pya.DPoint) -> pya.DPoint:
         grid_um = self.effective_edit_grid()
         if grid_um is None:
