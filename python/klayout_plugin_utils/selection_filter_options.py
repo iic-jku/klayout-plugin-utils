@@ -22,6 +22,7 @@ from typing import *
 
 import pya
 
+from klayout_plugin_utils.cached_classproperty import cached_classproperty
 from klayout_plugin_utils.debugging import debug, Debugging
 
 
@@ -73,31 +74,40 @@ class SelectionFilterOptions(IntFlag):
             return False
         return False
     
-    @classmethod
-    def option_by_menu_path(cls) -> Dict[str, SelectionFilterOptions]:
+    @cached_classproperty
+    def option_by_menu_title(cls) -> Dict[str, SelectionFilterOptions]:
         return {
-            'edit_menu.select_menu.pi_enable_15': SelectionFilterOptions.RULERS_AND_ANNOTATIONS,
-            'edit_menu.select_menu.pi_enable_16': SelectionFilterOptions.IMAGES,
-            'edit_menu.select_menu.pi_enable_17': SelectionFilterOptions.POLYGONS,
-            'edit_menu.select_menu.pi_enable_18': SelectionFilterOptions.BOXES,
-            'edit_menu.select_menu.pi_enable_19': SelectionFilterOptions.TEXTS,
-            'edit_menu.select_menu.pi_enable_20': SelectionFilterOptions.PATHS,
-            'edit_menu.select_menu.pi_enable_21': SelectionFilterOptions.POINTS,
-            'edit_menu.select_menu.pi_enable_22': SelectionFilterOptions.INSTANCES,
-            'edit_menu.select_menu.pi_enable_24': SelectionFilterOptions.PARTIAL_SHAPES,
+            'Rulers And Annotations': SelectionFilterOptions.RULERS_AND_ANNOTATIONS,
+            'Images': SelectionFilterOptions.IMAGES,
+            'Polygons': SelectionFilterOptions.POLYGONS,
+            'Boxes': SelectionFilterOptions.BOXES,
+            'Texts': SelectionFilterOptions.TEXTS,
+            'Paths': SelectionFilterOptions.PATHS,
+            'Points': SelectionFilterOptions.POINTS,
+            'Instances': SelectionFilterOptions.INSTANCES,
+            'Partial shapes': SelectionFilterOptions.PARTIAL_SHAPES,
         }
     
     @classmethod
     def from_ui(cls) -> SelectionFilterOptions:
         options = SelectionFilterOptions.NONE
     
-        mw = pya.Application.instance().main_window()
+        mw = pya.MainWindow.instance()
         menu = mw.menu()
-        for p, o in cls.option_by_menu_path().items():
-            action = menu.action(p)
-            if action.checked:
-                options |= o
-
+        
+        # NOTE: The selection filter command names are "random", 
+        #       edit_menu.select_menu.pi_enable_15 is e.g. 
+        #       on macOS "Rulers and Annotations", on Linux "Polygons".
+        #       Therefore we must rely on the Command Titles.
+        
+        subitems = menu.items('edit_menu.select_menu')
+        for si in subitems:
+            if '.pi_enable_' in si:
+                action = menu.action(si)
+                o = cls.option_by_menu_title.get(action.title, None)
+                if action.checked:
+                    options |= o
+        
         return options
         
 #--------------------------------------------------------------------------------
