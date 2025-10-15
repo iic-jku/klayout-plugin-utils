@@ -16,6 +16,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #--------------------------------------------------------------------------------
 
+from pathlib import Path
 import sys
 from typing import *
 
@@ -28,22 +29,26 @@ from klayout_plugin_utils.file_system_helpers import FileSystemHelpers
 class FileSelectorWidget(pya.QWidget):
     def __init__(self, 
                  parent: pya.QWidget,
+                 editable: bool,
                  file_dialog_title: str = "Select File",
-                 file_types: List[str] = ["All Files (*.*)"]):
+                 file_types: List[str] = ["All Files (*.*)"],
+                 path_transformer: Optional[Callable[Path, Path]] = None):
         super().__init__(parent)
         
+        self.editable = editable
         self.file_dialog_title = file_dialog_title
         self.file_type_filter = ';;'.join(file_types)
+        self.path_transformer = path_transformer
         
         self.layout = pya.QHBoxLayout(self)
         self.layout.setContentsMargins(0,0,0,0)
-
+        
         # Line edit to show file path
         self.line_edit = pya.QLineEdit()
-        self.line_edit.setReadOnly(True)
+        self.line_edit.setReadOnly(not editable)
         self.line_edit.setSizePolicy(pya.QSizePolicy.Expanding, pya.QSizePolicy.Preferred)
         self.layout.addWidget(self.line_edit)
-
+        
         # Action button (Browse or Clear)
         self.action_btn = pya.QPushButton("…")
         self.action_btn.setSizePolicy(pya.QSizePolicy.Fixed, pya.QSizePolicy.Preferred)
@@ -64,7 +69,10 @@ class FileSelectorWidget(pya.QWidget):
     
     @path.setter
     def path(self, new_path: str):
-        self.line_edit.setText(new_path)
+        effective_path = new_path
+        if self.path_transformer is not None:
+            effective_path = str(self.path_transformer(Path(new_path)))
+        self.line_edit.setText(effective_path)
         self.update_button()
     
     def on_button_clicked(self):
