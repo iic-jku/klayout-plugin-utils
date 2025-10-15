@@ -16,8 +16,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #--------------------------------------------------------------------------------
 
+import os
 from pathlib import Path
 from typing import *
+import unittest
 
 
 def strip_all_suffixes(path: Union[str, Path], allowed_suffixes: List[str]) -> str:
@@ -34,3 +36,74 @@ def strip_all_suffixes(path: Union[str, Path], allowed_suffixes: List[str]) -> s
             return path.name[: -len(suffix)]
     return path.stem  # fallback: just strip last suffix
 
+
+def expand_path(path: Union[str, Path]) -> Path:
+    path = Path(path)
+    return Path(os.path.expandvars(str(path.expanduser()))).resolve()
+
+
+def abbreviate_path(path: Union[str, Path],
+                    env_vars: List[str],
+                    base_folder: Optional[Union[str, Path]]) -> Path:
+    """
+    Return a human-readable, environment-aware abbreviation of `path`.
+    """
+    path = Path(path)
+    path = path.expanduser().resolve()
+    
+    # Try environment variables
+    for var in env_vars:
+        val = os.getenv(var)
+        if not val:
+            continue
+        val_path = Path(val).expanduser().resolve()
+        try:
+            rel = path.relative_to(val_path)
+            return f"${var}/{rel}" if str(rel) != "." else f"${var}"
+        except ValueError:
+            pass  # not relative to this variable
+    
+    # Try relative to base
+    if base_folder:
+        try:
+            base_folder = Path(base_folder)
+            rel = path.relative_to(base_folder.expanduser().resolve())
+            return str(rel)
+        except ValueError:
+            pass
+    
+    # Default to absolute string
+    return str(path)
+
+#--------------------------------------------------------------------------------
+
+class PathHelperTests(unittest.TestCase):
+    def test_strip_all_suffixes(self):
+        allowed_suffixes = ('.gds', '.gds.gz', '.klay.gds', '.klay.gds.gz')
+        self.assertEqual('layout', strip_all_suffixes('layout.gds', allowed_suffixes))
+        self.assertEqual('layout', strip_all_suffixes('layout.gds.gz', allowed_suffixes))
+        self.assertEqual('layout', strip_all_suffixes('layout.klay.gds', allowed_suffixes))
+        self.assertEqual('layout', strip_all_suffixes('layout.klay.gds.gz', allowed_suffixes))
+        
+    def test_expand_path(self):
+        self.assertEqual(f"{os.environ['HOME']}/layout.gds", str(expand_path('$HOME/layout.gds')))
+        self.assertEqual(f"{os.environ['HOME']}/layout.gds", str(expand_path('~/layout.gds')))
+
+    def test_abbreviate_path__env_var(self):
+        self.assertEqual('$HOME/layout.gds', str(abbreviate_path(
+            path=f"{os.environ['HOME']}/layout.gds",
+            env_vars=['HOME'],
+            base_folder=None
+        )))
+
+    def test_abbreviate_path__base_folder(self):
+        self.assertEqual('layout.gds', str(abbreviate_path(
+            path='/foss/designs/layout.gds',
+            env_vars=[],
+            base_folder='/foss/designs'
+        )))
+
+#--------------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    unittest.main()
