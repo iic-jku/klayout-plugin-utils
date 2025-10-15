@@ -43,15 +43,24 @@ def expand_path(path: Union[str, Path]) -> Path:
 
 
 def abbreviate_path(path: Union[str, Path],
-                    env_vars: List[str],
+                    env_vars: Optional[List[str]],
                     base_folder: Optional[Union[str, Path]]) -> Path:
     """
     Return a human-readable, environment-aware abbreviation of `path`.
     """
-    path = Path(path)
-    path = path.expanduser().resolve()
+    path = Path(path).expanduser().resolve()
     
-    # Try environment variables
+    candidates: Dict[str, int] = {}
+    
+    if base_folder:
+        try:
+            base = Path(base_folder).expanduser().resolve()
+            rel = path.relative_to(base)
+            candidates[str(rel)] = len(rel.parts)
+        except ValueError:
+            pass
+    
+    env_vars = env_vars or []
     for var in env_vars:
         val = os.getenv(var)
         if not val:
@@ -59,21 +68,16 @@ def abbreviate_path(path: Union[str, Path],
         val_path = Path(val).expanduser().resolve()
         try:
             rel = path.relative_to(val_path)
-            return f"${var}/{rel}" if str(rel) != "." else f"${var}"
+            abbrev = f"${var}/{rel}" if str(rel) != "." else f"${var}"
+            candidates[abbrev] = len(Path(abbrev).parts)
         except ValueError:
             pass  # not relative to this variable
     
-    # Try relative to base
-    if base_folder:
-        try:
-            base_folder = Path(base_folder)
-            rel = path.relative_to(base_folder.expanduser().resolve())
-            return str(rel)
-        except ValueError:
-            pass
-    
-    # Default to absolute string
-    return str(path)
+    # full path as a fallback
+    candidates[str(path)] = len(path.parts)
+
+    shortest = min(candidates, key=lambda k: candidates[k])
+    return shortest
 
 #--------------------------------------------------------------------------------
 
@@ -101,6 +105,13 @@ class PathHelperTests(unittest.TestCase):
             path='/foss/designs/layout.gds',
             env_vars=[],
             base_folder='/foss/designs'
+        )))
+
+    def test_abbreviate_path__combined(self):
+        self.assertEqual('layout.gds', str(abbreviate_path(
+            path=f"{os.environ['HOME']}/base_folder/layout.gds",
+            env_vars=['HOME'],
+            base_folder=f"{os.environ['HOME']}/base_folder/"
         )))
 
 #--------------------------------------------------------------------------------
