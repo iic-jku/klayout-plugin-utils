@@ -20,14 +20,14 @@ from pathlib import Path
 from typing import *
 
 
-def strip_all_suffixes(path: Path, allowed_suffixes: List[str]) -> str:
+def strip_all_suffixes(path: Union[str, Path], allowed_suffixes: List[str]) -> str:
     """
     Normal pathlib.Path.stem would return 'layout.gds' for 'layout.gds.gz',
     What we want in this case is to get 'layout'.
     
     Return filename with any known hierarchical layout suffix removed.
     """
-    
+    path = Path(path)
     descending_len_suffixes = sorted(list(allowed_suffixes), key=len, reverse=True)
     for suffix in descending_len_suffixes:
         if path.name.endswith(suffix):
