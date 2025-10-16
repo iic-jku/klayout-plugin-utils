@@ -77,21 +77,25 @@ class FileSelectorWidget(pya.QWidget):
     
     def on_button_clicked(self):
         if self.line_edit.text:
-            self.line_edit.clear()
-            return
-
-        fname = None
-        lru_path = FileSystemHelpers.least_recent_directory()
-        
-        fname = pya.QFileDialog.getOpenFileName(self, self.file_dialog_title, lru_path, self.file_type_filter)
-        if fname:
-            self.path = fname
+            self.line_edit.setText('')
+            self.update_button()
+        else:
+            old_path = self.path
+            
+            fname = None
+            lru_path = FileSystemHelpers.least_recent_directory()
+            
+            fname = pya.QFileDialog.getOpenFileName(self, self.file_dialog_title, lru_path, self.file_type_filter)
+            if fname:
+                self.path = fname
+            if old_path == self.path:
+                return
         
         def notify_listeners():
             for c in self.on_path_changed:
                 c(self)
 
-        if fname and self.on_path_changed:
+        if self.on_path_changed:
             EventLoop.defer(notify_listeners)
     
     def update_button(self):
