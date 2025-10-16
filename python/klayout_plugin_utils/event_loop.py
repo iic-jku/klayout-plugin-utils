@@ -18,9 +18,12 @@
 
 import pya
 import traceback
+import weakref
 from typing import *
 
 class EventLoop:
+    _active_timers = weakref.WeakSet()  # track active timers safely
+
     @classmethod
     def defer(cls, callable: Callable):
         # NOTE: if we directly call the Editor Options menu action
@@ -29,21 +32,22 @@ class EventLoop:
     
         mw = pya.Application.instance().main_window()
     
+        timer = pya.QTimer(mw)
+        timer.setSingleShot(True)
+
         def on_timeout():
             try:
                 callable()
             except Exception as e:
                 print("EventLoop.defer():on_timeout() caught an exception", e)
                 traceback.print_exc()
-        
-            if getattr(cls, "_defer_timer", None):
+            finally:
+                cls._active_timers.discard(timer)
                 try:
-                    cls._defer_timer._destroy()
+                    timer._destroy()
                 except RuntimeError:
                     pass  # already deleted by Qt
-                cls._defer_timer = None
         
-        cls._defer_timer = pya.QTimer(mw)
-        cls._defer_timer.setSingleShot(True)
-        cls._defer_timer.timeout = on_timeout
-        cls._defer_timer.start(0)
+        timer.timeout = on_timeout
+        cls._active_timers.add(timer)
+        timer.start(0)
