@@ -3,7 +3,7 @@
  <name>KLayoutPluginUtils</name>
  <token/>
  <hidden>true</hidden>
- <version>0.6</version>
+ <version>0.7</version>
  <api-version/>
  <title>Utility Library for KLayout Plugins</title>
  <doc>Utility Python package used by various IIC KLayout Plugins</doc>
