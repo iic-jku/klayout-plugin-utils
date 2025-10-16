@@ -65,7 +65,7 @@ class FileSelectorWidget(pya.QWidget):
     
     @property
     def path(self) -> str:
-        return self.line_edit.text
+        return self.line_edit.text.strip()
     
     @path.setter
     def path(self, new_path: str):
