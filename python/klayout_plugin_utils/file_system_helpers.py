@@ -37,6 +37,7 @@ class FileSystemHelpers:
         return lru_dir
         
     @classmethod
-    def set_least_recent_directory(cls, path: str):
+    def set_least_recent_directory(cls, path: str | Path):
+        path = Path(path)
         mw = pya.MainWindow.instance()
         mw.set_config(cls.CONFIG_KEY__LEAST_RECENT_DIRECTORY, path)
