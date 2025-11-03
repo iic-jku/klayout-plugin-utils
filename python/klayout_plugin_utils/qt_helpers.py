@@ -28,7 +28,7 @@ def qt_major_version() -> int:
     return qt_major
 
 
-def qshortcut(key_sequence: pya.QKeySequence,
+def compat_QShortCut(key_sequence: pya.QKeySequence,
               widget: pya.QWidget,
               on_trigger: Callable) -> pya.QShortCut:
     if qt_major_version() >= 6:
@@ -37,5 +37,17 @@ def qshortcut(key_sequence: pya.QKeySequence,
         return sc
     elif qt_major_version() == 5:
         return pya.QShortcut(key_sequence, widget, on_trigger)
+    else:
+        raise NotImplementedError()
+
+
+def compat_QTreeWidgetItem_setBackground(tvi: pya.QTreeWidgetItem,
+                                         column: int,
+                                         color: pya.QColor):
+    if qt_major_version() >= 6:
+        brush = pya.QBrush(color)
+        tvi.setBackground(column, brush)
+    elif qt_major_version() == 5:
+        tvi.setBackgroundColor(column, color)
     else:
         raise NotImplementedError()
