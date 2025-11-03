@@ -16,28 +16,26 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #--------------------------------------------------------------------------------
 
-from pathlib import Path
+from __future__ import annotations
 from typing import *
+import traceback
 
 import pya
 
 
-class FileSystemHelpers:
-    CONFIG_KEY__LEAST_RECENT_DIRECTORY = 'KLayoutLibraryManager__lru_directory'
-    
-    @classmethod
-    def least_recent_directory(cls) -> str:
-        mw = pya.MainWindow.instance()
-        lru_dir = mw.get_config(cls.CONFIG_KEY__LEAST_RECENT_DIRECTORY)
-        if lru_dir is None:
-            return ''
-        lru_path = Path(lru_dir)
-        if not lru_path.exists():
-            return ''
-        return lru_dir
-        
-    @classmethod
-    def set_least_recent_directory(cls, path: str | Path):
-        path = Path(path)
-        mw = pya.MainWindow.instance()
-        mw.set_config(cls.CONFIG_KEY__LEAST_RECENT_DIRECTORY, path)
+def qt_major_version() -> int:
+    qt_major = int(pya.Qt.QT_VERSION_STR.split('.')[0])
+    return qt_major
+
+
+def qshortcut(key_sequence: pya.QKeySequence,
+              widget: pya.QWidget,
+              on_trigger: Callable) -> pya.QShortCut:
+    if qt_major_version() >= 6:
+        sc = pya.QShortcut(key_sequence, widget)
+        sc.activated.connect(on_trigger)
+        return sc
+    elif qt_major_version() == 5:
+        return pya.QShortcut(key_sequence, widget, on_trigger)
+    else:
+        raise NotImplementedError()
