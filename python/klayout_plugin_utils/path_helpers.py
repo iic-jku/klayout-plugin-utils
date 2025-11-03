@@ -22,7 +22,7 @@ from typing import *
 import unittest
 
 
-def strip_all_suffixes(path: Union[str, Path], allowed_suffixes: List[str]) -> str:
+def stem_without_suffixes(path: Union[str, Path], allowed_suffixes: List[str]) -> str:
     """
     Normal pathlib.Path.stem would return 'layout.gds' for 'layout.gds.gz',
     What we want in this case is to get 'layout'.
@@ -35,6 +35,10 @@ def strip_all_suffixes(path: Union[str, Path], allowed_suffixes: List[str]) -> s
         if path.name.endswith(suffix):
             return path.name[: -len(suffix)]
     return path.stem  # fallback: just strip last suffix
+
+
+# deprecated
+strip_all_suffixes = stem_without_suffixes
 
 
 def expand_path(path: Union[str, Path]) -> Path:
@@ -84,10 +88,11 @@ def abbreviate_path(path: Union[str, Path],
 class PathHelperTests(unittest.TestCase):
     def test_strip_all_suffixes(self):
         allowed_suffixes = ('.gds', '.gds.gz', '.klay.gds', '.klay.gds.gz')
-        self.assertEqual('layout', strip_all_suffixes('layout.gds', allowed_suffixes))
-        self.assertEqual('layout', strip_all_suffixes('layout.gds.gz', allowed_suffixes))
-        self.assertEqual('layout', strip_all_suffixes('layout.klay.gds', allowed_suffixes))
-        self.assertEqual('layout', strip_all_suffixes('layout.klay.gds.gz', allowed_suffixes))
+        self.assertEqual('layout', stem_without_suffixes('layout.gds', allowed_suffixes))
+        self.assertEqual('layout', stem_without_suffixes('layout.gds.gz', allowed_suffixes))
+        self.assertEqual('layout', stem_without_suffixes('layout.klay.gds', allowed_suffixes))
+        self.assertEqual('layout', stem_without_suffixes('layout.klay.gds.gz', allowed_suffixes))
+        self.assertEqual('layout', stem_without_suffixes('/tmp/layout.klay.gds.gz', allowed_suffixes))
         
     def test_expand_path(self):
         self.assertEqual(f"{os.environ['HOME']}/layout.gds", str(expand_path('$HOME/layout.gds')))
