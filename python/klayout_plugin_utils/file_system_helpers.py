@@ -17,6 +17,8 @@
 #--------------------------------------------------------------------------------
 
 from pathlib import Path
+import subprocess
+import sys
 from typing import *
 
 import pya
@@ -41,3 +43,25 @@ class FileSystemHelpers:
         path = Path(path)
         mw = pya.MainWindow.instance()
         mw.set_config(cls.CONFIG_KEY__LEAST_RECENT_DIRECTORY, path)
+
+    @classmethod
+    def reveal_in_file_manager(cls, path: str | Path):
+        path = Path(path).resolve()
+    
+        if sys.platform == "darwin":   # macOS
+            # macOS Finder: open and select
+            subprocess.run(["open", "-R", str(path)])    
+        elif sys.platform.startswith("win"):  # Windows
+            # Windows Explorer: open and select
+            subprocess.run(["explorer", "/select,", str(path)])    
+        else:  # Linux / BSD / Unix: try common file managers
+            # KDE Dolphin
+            try:
+                subprocess.run(["dolphin", "--select", str(path)])
+                return
+            except FileNotFoundError:
+                pass
+            
+            # Fallback: open the directory using default manager
+            subprocess.run(["xdg-open", str(path.parent)])
+            
