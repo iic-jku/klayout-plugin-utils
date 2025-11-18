@@ -127,6 +127,27 @@ def pathlib_relpath(target: Path, base: Path) -> Path:
     rel_parts = [".."] * ups + list(target_parts[i:])
 
     return Path(*rel_parts) if rel_parts else Path(".")
+
+
+def rebase_relative_path(relative_path: str | Path,
+                         old_base_folder: str | Path,
+                         new_base_folder: str | Path) -> Path:
+    """
+    Rebase a path relative to old_base_folder so that it works under new_base_folder.
+    Fully pathlib-based, cross-platform.
+    """
+    relative_path = Path(relative_path)
+    old_base_folder = Path(old_base_folder)
+    new_base_folder = Path(new_base_folder)
+    
+    target = relative_path if relative_path.is_absolute() \
+             else (old_base_folder / relative_path)
+    target = normalize_path(target)
+    new_base_folder = normalize_path(new_base_folder)
+    new_relative_path = pathlib_relpath(target, new_base_folder)
+    return new_relative_path
+
+
 #--------------------------------------------------------------------------------
 
 class PathHelperTests(unittest.TestCase):
