@@ -83,6 +83,24 @@ def abbreviate_path(path: Union[str, Path],
     shortest = min(candidates, key=lambda k: candidates[k])
     return shortest
 
+
+def normalize_path(path: Path) -> Path:
+    """
+    Collapse '.' and '..' without following symlinks.
+    """
+    parts = []
+    for part in path.parts:
+        if part == ".":
+            continue
+        elif part == "..":
+            if parts and parts[-1] != "..":
+                parts.pop()
+            else:
+                parts.append("..")
+        else:
+            parts.append(part)
+    return Path(*parts)
+
 #--------------------------------------------------------------------------------
 
 class PathHelperTests(unittest.TestCase):
