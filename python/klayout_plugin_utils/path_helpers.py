@@ -101,6 +101,32 @@ def normalize_path(path: Path) -> Path:
             parts.append(part)
     return Path(*parts)
 
+
+def pathlib_relpath(target: Path, base: Path) -> Path:
+    """
+    Pure pathlib replacement for os.path.relpath.
+    Returns minimal relative path from base to target.
+    Works cross-platform (POSIX + Windows).
+    """
+    
+    # On Windows, paths on different drives are not relative
+    if target.drive != base.drive:
+        # Cannot compute relative path between drives
+        return target
+
+    target_parts = target.parts
+    base_parts = base.parts
+
+    # Find common ancestor
+    i = 0
+    while i < min(len(target_parts), len(base_parts)) and target_parts[i] == base_parts[i]:
+        i += 1
+
+    # Steps up from base to common ancestor
+    ups = len(base_parts) - i
+    rel_parts = [".."] * ups + list(target_parts[i:])
+
+    return Path(*rel_parts) if rel_parts else Path(".")
 #--------------------------------------------------------------------------------
 
 class PathHelperTests(unittest.TestCase):
