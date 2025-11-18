@@ -183,6 +183,20 @@ class PathHelperTests(unittest.TestCase):
             env_vars=['HOME'],
             base_folder=f"{os.environ['HOME']}/base_folder/"
         )))
+        
+    def test_rebase_relative_path(self):
+        self.assertEqual('../layout.gds', str(rebase_relative_path(
+            relative_path='../layout.gds',
+            old_base_folder=f"{os.environ['HOME']}/base_folder1/",
+            new_base_folder=f"{os.environ['HOME']}/base_folder2/"
+        )))
+
+        self.assertEqual(f"../..{os.environ['HOME']}/base_folder1/subdir/layout.gds", str(rebase_relative_path(
+            relative_path='subdir/layout.gds',
+            old_base_folder=f"{os.environ['HOME']}/base_folder1/",
+            new_base_folder=f"/tmp/base_folder2/"
+        )))
+
 
 #--------------------------------------------------------------------------------
 
