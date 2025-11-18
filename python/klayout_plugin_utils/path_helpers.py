@@ -43,7 +43,7 @@ strip_all_suffixes = stem_without_suffixes
 
 def expand_path(path: Union[str, Path]) -> Path:
     path = Path(path)
-    return Path(os.path.expandvars(str(path.expanduser()))).resolve()
+    return Path(os.path.expandvars(str(path.expanduser())))
 
 
 def abbreviate_path(path: Union[str, Path],
