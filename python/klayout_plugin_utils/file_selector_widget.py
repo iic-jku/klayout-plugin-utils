@@ -62,6 +62,9 @@ class FileSelectorWidget(pya.QWidget):
     
         # NOTE: here widget users can register callback for effective path change
         self.on_path_changed: List[Callable[FileSelectorWidget]] = []
+
+        self.line_edit.editingFinished.connect(self.emit_path_changed)
+        self.line_edit.returnPressed.connect(self.emit_path_changed)
     
     @property
     def path(self) -> str:
@@ -78,7 +81,6 @@ class FileSelectorWidget(pya.QWidget):
     def on_button_clicked(self):
         if self.line_edit.text:
             self.line_edit.setText('')
-            self.update_button()
         else:
             old_path = self.path
             
@@ -90,6 +92,11 @@ class FileSelectorWidget(pya.QWidget):
                 self.path = fname
             if old_path == self.path:
                 return
+                
+        self.emit_path_changed()
+    
+    def emit_path_changed(self):
+        self.update_button()
         
         def notify_listeners():
             for c in self.on_path_changed:
@@ -105,6 +112,15 @@ class FileSelectorWidget(pya.QWidget):
         else:
             self.action_btn.setText("…")
             self.action_btn.icon = pya.QIcon()
+
+    def validate(self):
+        if self.validator is None:
+            return
+        self.validator(self)
+
+    def set_valid(self, valid: bool):
+        color = 'white' if valid else '#FFCCCC'
+        self.line_edit.setStyleSheet(f"background-color: {color};")
 
 
 if __name__ == "__main__":
