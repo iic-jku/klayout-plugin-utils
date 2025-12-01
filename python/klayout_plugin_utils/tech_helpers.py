@@ -24,4 +24,9 @@ def drc_tech_grid_um() -> float:
     Used for DRC (offgrid errors)
     """
     cv = pya.CellView.active()
-    return cv.layout().technology().default_grid()
+    default_grid = cv.layout().technology().default_grid()
+    # FIXME: there should be a KLayout API method for getting the effective DRC default grid
+    #        for now we just use the default grid list (the entry with !)
+    if default_grid <= 0.00001:  # some technologies have no default grid, e.g. GF180mcuD
+        default_grid = 0.005  # fallback to 5nm
+    return default_grid
