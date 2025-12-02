@@ -51,3 +51,21 @@ def compat_QTreeWidgetItem_setBackground(tvi: pya.QTreeWidgetItem,
         tvi.setBackgroundColor(column, color)
     else:
         raise NotImplementedError()
+
+
+def qmessagebox(icon: pya.QMessageBox_Icon,
+               window_title: str, 
+               text: str, 
+               informative_text: str):
+    mw = pya.MainWindow.instance()        
+    mbx = pya.QMessageBox(mw)
+    mbx.icon = icon
+    mbx.setTextFormat(pya.Qt.RichText)
+    mbx.window_title = window_title
+    mbx.text = text
+    mbx.informativeText = informative_text
+    mbx.exec_()
+    
+
+def qmessagebox_critical(window_title: str, text: str, informative_text: str):
+    qmessagebox(pya.QMessageBox_Icon.Critical, window_title, text, informative_text)
