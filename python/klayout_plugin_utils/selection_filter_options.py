@@ -108,7 +108,7 @@ class SelectionFilterOptions(IntFlag):
                 if action.checked:
                     options |= o
         
-        return options
+        return SelectionFilterOptions(options)
         
 #--------------------------------------------------------------------------------
 
