@@ -26,3 +26,20 @@ else:
     class StrEnum(str, Enum):
         def __str__(self) -> str:
             return str(self.value)
+
+
+class DualStrEnum(StrEnum):
+    """StrEnum with separate UI labels and CLI/serialization keys."""
+    
+    def __new__(cls, cli_value: str, ui_label: str):
+        obj = str.__new__(cls, cli_value)
+        obj._value_ = cli_value
+        obj.ui_label = ui_label
+        return obj
+    
+    @classmethod
+    def from_ui_label(cls, label: str) -> "DualStrEnum":
+        for member in cls:
+            if member.ui_label == label:
+                return member
+        raise ValueError(f"No member with UI label {label!r}")
