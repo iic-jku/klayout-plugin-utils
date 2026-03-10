@@ -43,7 +43,7 @@ class LayerList:
     layers: List[pya.LayerInfo] = field(default_factory=list)
     
     def __str__(self) -> str:
-        return ' '.join([l.to_s() for l in self.layers])
+        return str([(l.name, l.layer, l.datatype) for l in self.layers])
     
     def contains(self, layer: int, datatype: int) -> bool:
         for l in self.layers:
