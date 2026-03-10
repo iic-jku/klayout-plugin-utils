@@ -45,6 +45,12 @@ class LayerList:
     def __str__(self) -> str:
         return ' '.join([l.to_s() for l in self.layers])
     
+    def contains(self, layer: int, datatype: int) -> bool:
+        for l in self.layers:
+            if l.layer == layer and l.datatype == datatype:
+                return True
+        return False
+    
     @classmethod
     def parse_layer_list_string(cls, s: str) -> ParseResult:
         """
@@ -150,6 +156,11 @@ class LayerListTests(unittest.TestCase):
                 pya.LayerInfo(99, 42),
             ]))
         )
+        
+    def test_contains(self):
+        obtained = LayerList.parse_layer_list_string('metal1 1/0 99/42')
+        self.assertEqual(True, obtained.result.contains(1, 0))
+        self.assertEqual(False, obtained.result.contains(50, 0))
         
 #--------------------------------------------------------------------------------
 
