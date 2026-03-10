@@ -64,14 +64,18 @@ class LayerList:
         layers = []
         errors = []
         
+        # A symbolic name token: an identifier optionally followed by .identifier segments,
+        # e.g. "metal1", "Metal1.drawing", "M1.pin.text"
+        _NAME = r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*'
+        
         # Regex matches:
         # 1) name + (layer/datatype)
         # 2) bare (layer/datatype)
         # 3) bare numeric layer/datatype (L/D)
         # 4) name only
-        layer_pattern = re.compile(r"""
+        layer_pattern = re.compile(rf"""
             (?:
-                (?P<name>[A-Za-z_]\w*)?                # optional symbolic name
+                (?P<name>{_NAME})?                # optional symbolic name
                 \s*
                 \(                                      # opening parenthesis
                     \s*(?P<layer1>\d+)\s*/\s*(?P<dtype1>\d+)\s*   # L/D inside ()
@@ -83,7 +87,7 @@ class LayerList:
             )
             |
             (?:
-                (?P<name_only>[A-Za-z_]\w*)            # name only
+                (?P<name_only>{_NAME})            # name only
             )
         """, re.VERBOSE)
         
@@ -136,11 +140,21 @@ class LayerListTests(unittest.TestCase):
         obtained = LayerList.parse_layer_list_string(s)
         self.assertEqual(expected, obtained)
 
+    def _expect_error(self, s: str):
+        obtained = LayerList.parse_layer_list_string(s)
+        self.assertEqual(1, len(obtained.errors))
+
     def test_parse_empty(self):
         self._expect_parse_result('', ParseResult(result=LayerList(layers=[])))
 
     def test_parse_only_name(self):
         self._expect_parse_result('met1', ParseResult(result=LayerList(layers=[pya.LayerInfo('met1')])))
+
+    def test_parse_only_name__with_dot(self):
+        self._expect_parse_result('Metal1.drawing', ParseResult(result=LayerList(layers=[pya.LayerInfo('Metal1.drawing')])))
+
+    def test_parse_only_name__illegal_characters(self):
+        self._expect_error('Metal1#drawing')
 
     def test_parse_only_gds_pair(self):
         self._expect_parse_result('(3/10)', ParseResult(result=LayerList(layers=[pya.LayerInfo(3, 10)])))
