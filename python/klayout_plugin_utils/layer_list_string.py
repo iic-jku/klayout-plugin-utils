@@ -45,9 +45,15 @@ class LayerList:
     def __str__(self) -> str:
         return str([(l.name, l.layer, l.datatype) for l in self.layers])
     
-    def contains(self, layer: int, datatype: int) -> bool:
+    def contains(self, candidate_layer: pya.LayerProperties) -> bool:
         for l in self.layers:
-            if l.layer == layer and l.datatype == datatype:
+            name = candidate_layer.name or candidate_layer.source_name
+            if name and l.name and name == l.name:
+                return True
+            if l.layer != -1 \
+               and l.layer == candidate_layer.source_layer \
+               and l.datatype != -1 \
+               and l.datatype == candidate_layer.source_datatype:
                 return True
         return False
     
@@ -173,9 +179,36 @@ class LayerListTests(unittest.TestCase):
         
     def test_contains(self):
         obtained = LayerList.parse_layer_list_string('metal1 1/0 99/42')
-        self.assertEqual(True, obtained.result.contains(1, 0))
-        self.assertEqual(False, obtained.result.contains(50, 0))
         
+        lp = pya.LayerProperties()
+        lp.name = 'metal1'
+        self.assertEqual(True, obtained.result.contains(lp))
+        
+        lp.name = ''
+        lp.source_layer = 50
+        lp.source_datatype = 0
+        self.assertEqual(False, obtained.result.contains(lp))
+        
+    def test_contains__dot(self):
+        obtained = LayerList.parse_layer_list_string('8/2 Metal1.drawing')
+        
+        lp = pya.LayerProperties()
+        lp.name = 'metal1'
+        self.assertEqual(False, obtained.result.contains(lp))
+        
+        lp = pya.LayerProperties()
+        lp.source_layer = 50
+        lp.source_datatype = 0
+        self.assertEqual(False, obtained.result.contains(lp))
+        
+        lp = pya.LayerProperties()
+        lp.name = 'Metal1.drawing'
+        self.assertEqual(True, obtained.result.contains(lp))
+
+        lp = pya.LayerProperties()
+        lp.source_name = 'Metal1.drawing'
+        self.assertEqual(True, obtained.result.contains(lp))
+
 #--------------------------------------------------------------------------------
 
 if __name__ == "__main__":
