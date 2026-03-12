@@ -51,6 +51,9 @@ class SelectionFilterOptions(IntFlag):
         )
         return bool(self & shape_flags)
     
+    def include_texts(self) -> bool:
+        return SelectionFilterOptions.TEXTS in self
+    
     def include_shape(self, shape: pya.Shape) -> bool:
         if shape.is_point():
             return SelectionFilterOptions.POINTS in self
