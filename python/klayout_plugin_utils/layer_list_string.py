@@ -43,7 +43,22 @@ class LayerList:
     layers: List[pya.LayerInfo] = field(default_factory=list)
     
     def __str__(self) -> str:
-        return str([(l.name, l.layer, l.datatype) for l in self.layers])
+        if not self.layers:
+            return ''
+        return ' '.join(self._format_layer(l) for l in self.layers)
+    
+    @staticmethod
+    def _format_layer(l: pya.LayerInfo) -> str:
+        has_name = l.name != ''
+        has_gds  = l.layer != -1 and l.datatype != -1
+        if has_name and has_gds:
+            return f"{l.name} ({l.layer}/{l.datatype})"
+        elif has_name:
+            return l.name
+        elif has_gds:
+            return f"({l.layer}/{l.datatype})"
+        else:
+            return ''  # degenerate LayerInfo, shouldn't normally occur
     
     def contains(self, candidate_layer: pya.LayerProperties) -> bool:
         for l in self.layers:
@@ -149,6 +164,54 @@ class LayerListTests(unittest.TestCase):
     def _expect_error(self, s: str):
         obtained = LayerList.parse_layer_list_string(s)
         self.assertEqual(1, len(obtained.errors))
+    
+    def test_format_empty(self):
+        self.assertEqual('', str(LayerList(layers=[])))
+    
+    def test_format_name_only(self):
+        self.assertEqual('met1', str(LayerList(layers=[pya.LayerInfo('met1')])))
+    
+    def test_format_name_only__with_dot(self):
+        self.assertEqual('Metal1.drawing', str(LayerList(layers=[pya.LayerInfo('Metal1.drawing')])))
+    
+    def test_format_gds_only(self):
+        self.assertEqual('(3/10)', str(LayerList(layers=[pya.LayerInfo(3, 10)])))
+    
+    def test_format_name_and_gds(self):
+        self.assertEqual('metal1 (1/0)', str(LayerList(layers=[pya.LayerInfo(1, 0, 'metal1')])))
+    
+    def test_format_mix(self):
+        self.assertEqual(
+            'metal1 (1/0) via1 (2/0) metal2 (3/0) (1/0) (99/42)',
+            str(LayerList(layers=[
+                pya.LayerInfo(1, 0, 'metal1'),
+                pya.LayerInfo(2, 0, 'via1'),
+                pya.LayerInfo(3, 0, 'metal2'),
+                pya.LayerInfo(1, 0),
+                pya.LayerInfo(99, 42),
+            ]))
+        )
+    
+    # Round-trip tests
+    def test_roundtrip_empty(self):
+        self._expect_roundtrip('')
+    
+    def test_roundtrip_name_only(self):
+        self._expect_roundtrip('met1')
+    
+    def test_roundtrip_gds_only(self):
+        self._expect_roundtrip('(3/10)')
+    
+    def test_roundtrip_name_and_gds(self):
+        self._expect_roundtrip('metal1 (1/0)')
+    
+    def test_roundtrip_mix(self):
+        self._expect_roundtrip('metal1 (1/0) via1 (2/0) metal2 (3/0) (1/0) (99/42)')
+    
+    def _expect_roundtrip(self, s: str):
+        result = LayerList.parse_layer_list_string(s)
+        self.assertEqual(0, len(result.errors))
+        self.assertEqual(s, str(result.result))
 
     def test_parse_empty(self):
         self._expect_parse_result('', ParseResult(result=LayerList(layers=[])))
