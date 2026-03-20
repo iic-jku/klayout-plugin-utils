@@ -78,7 +78,7 @@ class AngleMode(StrEnum):
 
 
 class EditGridKind(StrEnum):
-    NONE = 'none'      
+    NONE = 'none'
     GLOBAL = 'global'
     OTHER = 'other'
 
@@ -88,9 +88,9 @@ class EditorOptions:
         self.view = view
 
         for name in (
-            'edit-grid', 
-            'edit-snap-objects-to-grid', 
-            'edit-connect-angle-mode', 
+            'edit-grid',
+            'edit-snap-objects-to-grid',
+            'edit-connect-angle-mode',
             'edit-move-angle-mode',
         ):
             self.plugin_configure(name, view.get_config(name))

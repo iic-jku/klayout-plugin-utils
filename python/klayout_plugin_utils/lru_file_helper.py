@@ -122,4 +122,3 @@ class LRUFileHelper:
             app.set_config(self._key, value)
         except Exception:
             pass
-
