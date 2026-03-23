@@ -16,6 +16,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #--------------------------------------------------------------------------------
 
+from __future__ import annotations
+
 from pathlib import Path
 import subprocess
 import sys
@@ -50,10 +52,10 @@ class FileSystemHelpers:
     
         if sys.platform == "darwin":   # macOS
             # macOS Finder: open and select
-            subprocess.run(["open", "-R", str(path)])    
+            subprocess.run(["open", "-R", str(path)])
         elif sys.platform.startswith("win"):  # Windows
             # Windows Explorer: open and select
-            subprocess.run(["explorer", "/select,", str(path)])    
+            subprocess.run(["explorer", "/select,", str(path)])
         else:  # Linux / BSD / Unix: try common file managers
             # KDE Dolphin
             try:
@@ -64,4 +66,3 @@ class FileSystemHelpers:
             
             # Fallback: open the directory using default manager
             subprocess.run(["xdg-open", str(path.parent)])
-            

@@ -79,7 +79,7 @@ class LRUFileHelper:
             self._save_raw([str(p) for p in existing])
         return existing
 
-    def push(self, path: Path | str):
+    def push(self, path: Union[Path, str]):
         """Record *path* as the most-recently used entry.
 
         If the path is already in the list it is moved to the front.
@@ -122,4 +122,3 @@ class LRUFileHelper:
             app.set_config(self._key, value)
         except Exception:
             pass
-

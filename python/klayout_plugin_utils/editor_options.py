@@ -16,6 +16,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #--------------------------------------------------------------------------------
 
+from __future__ import annotations
+
 import math
 from typing import *
 
@@ -37,37 +39,36 @@ class AngleMode(StrEnum):
         dx = destination.x - origin.x
         dy = destination.y - origin.y
         
-        match self:
-            case AngleMode.ANY_ANGLE:
-                result = destination
+        if self == AngleMode.ANY_ANGLE:
+            result = destination
                 
-            case AngleMode.DIAGONAL:
-                # Allowed directions: 0°, 90°, 180°, 270° and ±45°, ±135°
-                candidates = [0, math.pi, 
-                              math.pi/2, -math.pi/2, 
-                              math.pi/4, -math.pi/4, 
-                              3*math.pi/4, -3*math.pi/4]
+        elif self == AngleMode.DIAGONAL:
+            # Allowed directions: 0°, 90°, 180°, 270° and ±45°, ±135°
+            candidates = [0, math.pi,
+                          math.pi/2, -math.pi/2,
+                          math.pi/4, -math.pi/4,
+                          3*math.pi/4, -3*math.pi/4]
 
-                angle = math.atan2(dy, dx)  # radians
+            angle = math.atan2(dy, dx)  # radians
+            
+            # Find closest allowed angle
+            best = min(candidates, key=lambda a: abs((angle - a + math.pi) % (2*math.pi) - math.pi))
+    
+            # Project vector onto this direction
+            ux = math.cos(best)
+            uy = math.sin(best)
+            dot = ux*dx + uy*dy
+            result = pya.DPoint(origin.x + dot*ux, origin.y + dot*uy)
+            
+        elif self == AngleMode.MANHATTAN:
+            # Snap to horizontal or vertical based on which component is larger
+            if abs(dx) > abs(dy):
+                result = pya.DPoint(origin.x + dx, origin.y)
+            else:
+                result = pya.DPoint(origin.x, origin.y + dy)
                 
-                # Find closest allowed angle
-                best = min(candidates, key=lambda a: abs((angle - a + math.pi) % (2*math.pi) - math.pi))
-        
-                # Project vector onto this direction
-                ux = math.cos(best)
-                uy = math.sin(best)
-                dot = ux*dx + uy*dy
-                result = pya.DPoint(origin.x + dot*ux, origin.y + dot*uy)
-                
-            case AngleMode.MANHATTAN:
-                # Snap to horizontal or vertical based on which component is larger
-                if abs(dx) > abs(dy):
-                    result = pya.DPoint(origin.x + dx, origin.y)
-                else:
-                    result = pya.DPoint(origin.x, origin.y + dy)
-                    
-            case _:
-                raise NotImplementedError(f"unknown AngleMode {self}")
+        else:
+            raise NotImplementedError(f"unknown AngleMode {self}")
             
         # # Hotspot, don't log this
         # if Debugging.DEBUG:
@@ -77,7 +78,7 @@ class AngleMode(StrEnum):
 
 
 class EditGridKind(StrEnum):
-    NONE = 'none'      
+    NONE = 'none'
     GLOBAL = 'global'
     OTHER = 'other'
 
@@ -87,29 +88,28 @@ class EditorOptions:
         self.view = view
 
         for name in (
-            'edit-grid', 
-            'edit-snap-objects-to-grid', 
-            'edit-connect-angle-mode', 
+            'edit-grid',
+            'edit-snap-objects-to-grid',
+            'edit-connect-angle-mode',
             'edit-move-angle-mode',
         ):
             self.plugin_configure(name, view.get_config(name))
 
     def plugin_configure(self, name: str, value: str):
         if name == 'edit-grid':
-            match value:
-                case 'none':
+            if value == 'none':
+                self._edit_grid_kind = EditGridKind.NONE
+                self._edit_grid_value = None
+            elif value in ('global', ''):  # NOTE: empty string if grid was never changed yet
+                self._edit_grid_kind = EditGridKind.GLOBAL
+                self._edit_grid_value = None  # we'll fetch it on demand in effective_edit_grid()
+            else:
+                try:
+                    self._edit_grid_value = float(value)
+                    self._edit_grid_kind = EditGridKind.OTHER
+                except ValueError:
                     self._edit_grid_kind = EditGridKind.NONE
-                    self._edit_grid_value = None
-                case 'global' | '':  # NOTE: empty string if grid was never changed yet
-                    self._edit_grid_kind = EditGridKind.GLOBAL
-                    self._edit_grid_value = None  # we'll fetch it on demand in effective_edit_grid()
-                case _:
-                    try:
-                        self._edit_grid_value = float(value)
-                        self._edit_grid_kind = EditGridKind.OTHER
-                    except ValueError:
-                        self._edit_grid_kind = EditGridKind.NONE
-                        raise NotImplementedError(f"unknown value '{value}' for configuration key 'edit-grid'")
+                    raise NotImplementedError(f"unknown value '{value}' for configuration key 'edit-grid'")
         elif name == 'edit-snap-objects-to-grid':
             self._edit_snap_objects_to_grid = value == 'true'
         elif name == 'edit-connect-angle-mode':
@@ -128,14 +128,15 @@ class EditorOptions:
         return self._edit_connect_angle_mode
 
     def effective_edit_grid(self) -> Optional[float]:
-        match self._edit_grid_kind:
-            case EditGridKind.NONE:
-                return None
-            case EditGridKind.GLOBAL:
-                um = float(self.view.get_config('grid-micron'))
-                return um
-            case EditGridKind.OTHER:
-                return self._edit_grid_value
+        if self._edit_grid_kind == EditGridKind.NONE:
+            return None
+        elif self._edit_grid_kind == EditGridKind.GLOBAL:
+            um = float(self.view.get_config('grid-micron'))
+            return um
+        elif self._edit_grid_kind == EditGridKind.OTHER:
+            return self._edit_grid_value
+        else:
+            raise NotImplementedError(f"unknown EditGridKind {self._edit_grid_kind}")
     
     @classmethod
     def show_editor_options(cls):
