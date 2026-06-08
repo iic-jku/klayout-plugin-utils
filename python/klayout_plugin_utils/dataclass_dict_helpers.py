@@ -17,6 +17,7 @@
 #--------------------------------------------------------------------------------
 
 from dataclasses import dataclass, asdict, fields, is_dataclass
+from enum import EnumMeta
 from pathlib import Path
 from typing import Dict, Union, get_origin, get_type_hints, get_args
 
@@ -38,6 +39,16 @@ def dataclass_from_dict(cls, data: Dict):
     elif origin is list:  # handle lists
         item_type = args[0]
         return [dataclass_from_dict(item_type, v) for v in data]
+
+    elif origin is dict:                          # ← ADD THIS
+        key_type, val_type = args[0], args[1]
+        return {
+            dataclass_from_dict(key_type, k): dataclass_from_dict(val_type, v)
+            for k, v in data.items()
+        }
+
+    elif isinstance(cls, EnumMeta):               # ← ADD THIS
+        return cls(data)
 
     elif is_dataclass(cls):  # normal dataclass
         if not isinstance(data, dict):
