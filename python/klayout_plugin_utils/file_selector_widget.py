@@ -32,7 +32,8 @@ class FileSelectorWidget(pya.QWidget):
                  editable: bool,
                  file_dialog_title: str = "Select File",
                  file_types: List[str] = ["All Files (*.*)"],
-                 path_transformer: Optional[Callable[Path, Path]] = None):
+                 path_transformer: Optional[Callable[Path, Path]] = None,
+                 fixed_height: Optional[int] = None):
         super().__init__(parent)
         
         self.editable = editable
@@ -40,24 +41,32 @@ class FileSelectorWidget(pya.QWidget):
         self.file_type_filter = ';;'.join(file_types)
         self.path_transformer = path_transformer
         
-        self.layout = pya.QHBoxLayout(self)
-        self.layout.setContentsMargins(0,0,0,0)
+        self._layout = pya.QHBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
         
         # Line edit to show file path
         self.line_edit = pya.QLineEdit()
         self.line_edit.setReadOnly(not editable)
-        self.line_edit.setSizePolicy(pya.QSizePolicy.Expanding, pya.QSizePolicy.Preferred)
-        self.layout.addWidget(self.line_edit)
+        self.line_edit.setSizePolicy(pya.QSizePolicy.Expanding, pya.QSizePolicy.Fixed)
+        self._layout.addWidget(self.line_edit)
         
         # Action button (Browse or Clear)
         self.action_btn = pya.QPushButton("…")
-        self.action_btn.setSizePolicy(pya.QSizePolicy.Fixed, pya.QSizePolicy.Preferred)
-        
-        self.layout.addWidget(self.action_btn)
+        self.action_btn.setSizePolicy(pya.QSizePolicy.Fixed, pya.QSizePolicy.Fixed)
+        self._layout.addWidget(self.action_btn)
         self.action_btn.clicked.connect(self.on_button_clicked)
         
-        self.setSizePolicy(pya.QSizePolicy.Expanding, pya.QSizePolicy.Preferred)
+        self.setSizePolicy(pya.QSizePolicy.Expanding, pya.QSizePolicy.Fixed)
 
+        if fixed_height is not None:
+            self.line_edit.setFixedHeight(fixed_height)
+            self.action_btn.setFixedHeight(fixed_height)
+            self.action_btn.setFixedWidth(fixed_height)
+            self.setFixedHeight(fixed_height)
+        else:
+            self.line_edit.setFixedHeight(26)
+            self.action_btn.setFixedHeight(32)
+                                                          
         self.update_button()
     
         # NOTE: here widget users can register callback for effective path change
