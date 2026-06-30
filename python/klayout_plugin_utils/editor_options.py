@@ -84,15 +84,21 @@ class EditGridKind(StrEnum):
 
 
 class EditorOptions:
-    def __init__(self, view: pya.LayoutView):
-        self.view = view
-
-        for name in (
+    @classmethod
+    def watched_config_keys(cls) -> Set[str]:
+        return {
+            'grid-micron',
             'edit-grid',
+            'edit-snap-to-objects',
             'edit-snap-objects-to-grid',
             'edit-connect-angle-mode',
             'edit-move-angle-mode',
-        ):
+        }
+    
+    def __init__(self, view: pya.LayoutView):
+        self.view = view
+
+        for name in EditorOptions.watched_config_keys():
             self.plugin_configure(name, view.get_config(name))
 
     def plugin_configure(self, name: str, value: str):
@@ -110,6 +116,8 @@ class EditorOptions:
                 except ValueError:
                     self._edit_grid_kind = EditGridKind.NONE
                     raise NotImplementedError(f"unknown value '{value}' for configuration key 'edit-grid'")
+        elif name == 'edit-snap-to-objects':
+            self._edit_snap_to_objects = value == 'true'
         elif name == 'edit-snap-objects-to-grid':
             self._edit_snap_objects_to_grid = value == 'true'
         elif name == 'edit-connect-angle-mode':
@@ -119,6 +127,29 @@ class EditorOptions:
         if Debugging.DEBUG:
             debug(f"Plugin reconfigured: EditorOptions are now {self.__dict__}")
 
+    def save(self):
+        v: str
+        if self._edit_grid_kind == EditGridKind.NONE:
+            v = 'none'
+        elif self._edit_grid_kind == EditGridKind.GLOBAL:
+            v = 'global'
+        elif self._edit_grid_kind == EditGridKind.OTHER:
+            v = str(self._edit_grid_value)
+        self.view.set_config('edit-grid', v)
+        
+        self.view.set_config('edit-snap-to-objects', 'true' if self._edit_snap_to_objects else 'false')
+        self.view.set_config('edit-snap-objects-to-grid', 'true' if self._edit_snap_objects_to_grid else 'false')
+        self.view.set_config('edit-connect-angle-mode', self._edit_connect_angle_mode.value)
+        self.view.set_config('edit-move-angle-mode', self._edit_move_angle_mode.value)
+        
+    @property
+    def edit_grid_kind(self) -> EditGridKind:
+        return self._edit_grid_kind
+
+    @property
+    def edit_grid_value(self) -> float:
+        return self._edit_grid_value
+
     @property
     def edit_move_angle_mode(self) -> AngleMode:
         return self._edit_move_angle_mode
@@ -127,12 +158,42 @@ class EditorOptions:
     def edit_connect_angle_mode(self) -> AngleMode:
         return self._edit_connect_angle_mode
 
+    @property
+    def edit_snap_to_objects(self) -> bool:
+        return self._edit_snap_to_objects
+
+    @property
+    def edit_snap_objects_to_grid(self) -> bool:
+        return self._edit_snap_objects_to_grid
+
+    @property
+    def global_grid(self) -> float:
+        um = float(self.view.get_config('grid-micron'))
+        return um
+
+    def set_edit_grid_kind(self, kind: EditGridKind):
+        self._edit_grid_kind = kind
+        
+    def set_edit_grid_value(self, value: float):
+        self._edit_grid_value = value
+        
+    def set_edit_move_angle_mode(self, mode: AngleMode):
+        self._edit_move_angle_mode = mode
+        
+    def set_edit_connect_angle_mode(self, mode: AngleMode):
+        self._edit_connect_angle_mode = mode
+        
+    def set_edit_snap_to_objects(self, snap: bool):
+        self._edit_snap_to_objects = snap
+        
+    def set_edit_snap_objects_to_grid(self, snap: bool):
+        self._edit_snap_objects_to_grid = snap
+
     def effective_edit_grid(self) -> Optional[float]:
         if self._edit_grid_kind == EditGridKind.NONE:
             return None
         elif self._edit_grid_kind == EditGridKind.GLOBAL:
-            um = float(self.view.get_config('grid-micron'))
-            return um
+            return self.global_grid
         elif self._edit_grid_kind == EditGridKind.OTHER:
             return self._edit_grid_value
         else:
