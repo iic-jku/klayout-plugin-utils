@@ -17,23 +17,35 @@
 #--------------------------------------------------------------------------------
 
 import os
+import inspect
 from typing import *
 
 import pya
 
 #--------------------------------------------------------------------------------
 
-path_containing_this_script = os.path.realpath(os.path.join(os.path.dirname(__file__)))
+def load_ui(ui_filename: str, parent=None, base_dir: Optional[str] = None) -> pya.QWidget:
+    """Load a .ui file and return its root widget.
 
+    ui_filename is resolved relative to base_dir if given, otherwise
+    relative to the caller's own file location (so this works no matter
+    which package load_ui itself lives in).
+    """
+    if base_dir is None:
+        caller_file = inspect.stack()[1].filename
+        base_dir = os.path.dirname(os.path.abspath(caller_file))
 
-def load_ui(ui_filename: str, parent=None) -> pya.QWidget:
-    """Load a .ui file and return its root widget."""
-    loader = pya.QUiLoader()
-    ui_path = os.path.join(path_containing_this_script, ui_filename)
+    ui_path = os.path.join(base_dir, ui_filename)
     ui_file = pya.QFile(ui_path)
+    if not ui_file.exists():
+        raise FileNotFoundError(f"UI file not found: {ui_path}")
+    
+    loader = pya.QUiLoader()
     try:
         ui_file.open(pya.QFile.ReadOnly)
         widget = loader.load(ui_file, parent)
+        if widget is None:
+            raise RuntimeError(f"QUiLoader failed to load {ui_path}: {loader.errorString()}")
     finally:
         ui_file.close()
     return widget
