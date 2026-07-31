@@ -28,12 +28,22 @@ from klayout_plugin_utils.str_enum_compat import DualStrEnum
 
 # ---------------------------------------------------------------------------
 
-# property keys for connectivity information 
+# property keys for connectivity information (pins)
 PROPERTY_KEY__PIN_INFO__VERSION = 'PIN_INFO__VERSION'
 PROPERTY_KEY__PIN_INFO__LIB_NAME = 'PIN_INFO__LIB_NAME'
 PROPERTY_KEY__PIN_INFO__CELL_NAME = 'PIN_INFO__CELL_NAME'
 PROPERTY_KEY__PIN_INFO__PIN_NAME = 'PIN_INFO__PIN_NAME'
 PROPERTY_KEY__PIN_INFO__TERM_NAME = 'PIN_INFO__TERM_NAME'
+
+# property keys for connectivity information (instances)
+PROPERTY_KEY__INSTANCE_INFO__VERSION = 'INSTANCE_INFO__VERSION'
+PROPERTY_KEY__INSTANCE_INFO__LIB_NAME = 'INSTANCE_INFO__LIB_NAME'
+PROPERTY_KEY__INSTANCE_INFO__CELL_NAME = 'INSTANCE_INFO__CELL_NAME'
+PROPERTY_KEY__INSTANCE_INFO__INSTANCE_NAME = 'INSTANCE_INFO__INSTANCE_NAME'
+PROPERTY_KEY__INSTANCE_INFO__HIERARCHY_PATH = 'INSTANCE_INFO__HIERARCHY_PATH'  # e.g. top.X3.X1
+PROPERTY_KEY__INSTANCE_INFO__ORIGINAL_INSTANCE_PARAMS = 'INSTANCE_INFO__ORIGINAL_INSTANCE_PARAMS'
+PROPERTY_KEY__INSTANCE_INFO__LOCAL_NET_MAP = 'INSTANCE_INFO__LOCAL_NET_MAP'  # JSON with pins->nets
+PROPERTY_KEY__INSTANCE_INFO__GLOBAL_NET_MAP = 'INSTANCE_INFO__GLOBAL_NET_MAP'  # JSON with pins->nets
 
 # ---------------------------------------------------------------------------
 
