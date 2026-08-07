@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 from typing import *
 
 import pya
@@ -69,18 +70,22 @@ class PinInfo:
 
 
 @dataclass 
-class PCellInstanceConnectivityInfo:
+class CellInstanceConnectivityInfo:
     inst: pya.Instance
     inst_name: str
     cell_name: str
     lib_name: Optional[str] = None
+    hierarchy_path: Optional[str] = None   # e.g. "top.X3.X1", from the netlist importer
+    netlist_cell_name: Optional[str] = None   # schematic/netlist device name, from INSTANCE_INFO__CELL_NAME
+    netlist_lib_name: Optional[str] = None    # schematic/netlist library name, from INSTANCE_INFO__LIB_NAME
     pin_infos: List[PinInfo] = field(default_factory=list)
+    local_net_map: Dict[str, str] = field(default_factory=dict)  # pin name -> net name
 
     @classmethod
-    def for_pcell(cls, 
-                  inst: pya.Instance, 
-                  outer_trans: pya.ICplxTrans,
-                  ctx: Context) -> Optional[PCellInstanceConnectivityInfo]:
+    def for_instance(cls, 
+                     inst: pya.Instance, 
+                     outer_trans: pya.ICplxTrans,
+                     ctx: Context) -> Optional[CellInstanceConnectivityInfo]:
         pcell_decl = inst.pcell_declaration()
             
         # cell_name: the PCell's declared name (e.g. "nmos"), not the mangled
@@ -92,12 +97,21 @@ class PCellInstanceConnectivityInfo:
         # PCells (no separate Library) return None here.
         lib = inst.cell.library()
         lib_name = lib.name() if lib is not None else None
-    
-        result = PCellInstanceConnectivityInfo(
+
+        local_net_map = cls._read_local_net_map(inst)
+        hierarchy_path = cls._read_hierarchy_path(inst)
+        netlist_cell_name = inst.property(PROPERTY_KEY__INSTANCE_INFO__CELL_NAME) or None
+        netlist_lib_name = inst.property(PROPERTY_KEY__INSTANCE_INFO__LIB_NAME) or None
+
+        result = CellInstanceConnectivityInfo(
             inst=inst,
             inst_name=inst.cell.name,
-            cell_name=inst.cell.name,
-            lib_name=lib_name
+            cell_name=cell_name,
+            lib_name=lib_name,
+            hierarchy_path=hierarchy_path,
+            netlist_cell_name=netlist_cell_name,
+            netlist_lib_name=netlist_lib_name,
+            local_net_map=local_net_map,
         )
         
         layout = ctx.layout
@@ -110,8 +124,8 @@ class PCellInstanceConnectivityInfo:
             layer_info = layout.get_info(siter.layer())
             properties = sh.properties()
             
-            if Debugging.DEBUG:
-                debug(f"Pin Info: {sh.to_s()} on layer {siter.layer()} ({layer_info})")
+            # if Debugging.DEBUG:
+            #    debug(f"Pin Info: {sh.to_s()} on layer {siter.layer()} ({layer_info})")
             
             version = properties.get(PROPERTY_KEY__PIN_INFO__VERSION)
             # lib_name = properties.get(PROPERTY_KEY__PIN_INFO__LIB_NAME)
@@ -136,13 +150,62 @@ class PCellInstanceConnectivityInfo:
             siter.next()
 
         return result
+        
+    @classmethod
+    def _read_local_net_map(cls, inst: pya.Instance) -> Dict[str, str]:
+        """
+        Reads INSTANCE_INFO__LOCAL_NET_MAP from the instance (written by the
+        netlist importer) and parses it into a pin-name -> net-name dict.
+        Returns an empty dict if the property is missing, empty, or malformed
+        (e.g. layouts created before this property was introduced).
+        """
+        raw = inst.property(PROPERTY_KEY__INSTANCE_INFO__LOCAL_NET_MAP)
+        if not raw:
+            return {}
 
+        try:
+            net_map = json.loads(raw)
+        except (TypeError, ValueError) as e:
+            if Debugging.DEBUG:
+                debug(f"CellInstanceConnectivityInfo._read_local_net_map: "
+                      f"failed to parse {PROPERTY_KEY__INSTANCE_INFO__LOCAL_NET_MAP} "
+                      f"({raw!r}) on instance {inst.cell.name}: {e}")
+            return {}
 
+        if not isinstance(net_map, dict):
+            if Debugging.DEBUG:
+                debug(f"CellInstanceConnectivityInfo._read_local_net_map: "
+                      f"expected a JSON object, got {type(net_map)} "
+                      f"on instance {inst.cell.name}")
+            return {}
+
+        return net_map
+
+    @classmethod
+    def _read_hierarchy_path(cls, inst: pya.Instance) -> Optional[str]:
+        """
+        Reads INSTANCE_INFO__HIERARCHY_PATH (e.g. "top.X3.X1"), written by
+        the netlist importer. Returns None if absent (e.g. layouts imported
+        before this property existed).
+        """
+        path = inst.property(PROPERTY_KEY__INSTANCE_INFO__HIERARCHY_PATH)
+        return path if path else None
+
+    def net_for_pin(self, pin: PinInfo) -> str:
+        """
+        Resolves the net name for one of this instance's pins, preferring
+        the netlist importer's pin->net map (INSTANCE_INFO__LOCAL_NET_MAP)
+        and falling back to the PCell-local terminal name for instances
+        that don't carry a net map yet.
+        """
+        return self.local_net_map.get(pin.name, pin.term_name)
+        
+        
 @dataclass
 class CellConnectivityInfo:
     cell: pya.Cell    # potentially destroyed, so cache cell_name
     cell_name: str
-    pcell_infos: List[PCellInstanceConnectivityInfo] = field(default_factory=list)
+    pcell_infos: List[CellInstanceConnectivityInfo] = field(default_factory=list)
 
     @classmethod
     def for_cell_instance(cls, cell: pya.Cell, ctx: Context) -> CellConnectivityInfo:
@@ -160,7 +223,7 @@ class CellConnectivityInfo:
             inst = iter.current_inst_element().inst()
             hidden = lv.is_cell_hidden(inst.cell.cell_index(), lv.active_cellview_index)
             if not hidden and inst.is_pcell():
-                pi = PCellInstanceConnectivityInfo.for_pcell(inst, iter.inst_trans(), ctx)
+                pi = CellInstanceConnectivityInfo.for_instance(inst, iter.inst_trans(), ctx)
                 result.pcell_infos.append(pi)
             iter.next()
         
@@ -180,11 +243,11 @@ class LayoutConnectivityInfo:
         cv = lv.active_cellview()
 
         # ensure PCells were evaluated
-        pya.Library.refresh_all()
+        ## pya.Library.refresh_all()
         
         top_cell = cv.cell
         if cv.is_cell_hidden(top_cell):
-            return lci
+            return result
         
         ci = CellConnectivityInfo.for_cell_instance(top_cell, ctx)
         result.cell_infos.append(ci)
