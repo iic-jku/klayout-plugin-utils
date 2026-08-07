@@ -124,8 +124,8 @@ class EditorOptions:
             self._edit_connect_angle_mode = AngleMode(value)
         elif name == 'edit-move-angle-mode':
             self._edit_move_angle_mode = AngleMode(value)
-        if Debugging.DEBUG:
-            debug(f"Plugin reconfigured: EditorOptions are now {self.__dict__}")
+        # if Debugging.DEBUG:
+        #    debug(f"Plugin reconfigured: EditorOptions are now {self.__dict__}")
 
     def save(self):
         v: str
