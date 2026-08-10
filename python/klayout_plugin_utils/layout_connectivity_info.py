@@ -80,6 +80,7 @@ class CellInstanceConnectivityInfo:
     netlist_lib_name: Optional[str] = None    # schematic/netlist library name, from INSTANCE_INFO__LIB_NAME
     pin_infos: List[PinInfo] = field(default_factory=list)
     local_net_map: Dict[str, str] = field(default_factory=dict)  # pin name -> net name
+    global_net_map: Dict[str, str] = field(default_factory=dict)  # pin name -> globally unique, hierarchy-qualified net name
 
     @classmethod
     def for_instance(cls, 
@@ -98,7 +99,8 @@ class CellInstanceConnectivityInfo:
         lib = inst.cell.library()
         lib_name = lib.name() if lib is not None else None
 
-        local_net_map = cls._read_local_net_map(inst)
+        local_net_map = cls._read_net_map(inst, PROPERTY_KEY__INSTANCE_INFO__LOCAL_NET_MAP)
+        global_net_map = cls._read_net_map(inst, PROPERTY_KEY__INSTANCE_INFO__GLOBAL_NET_MAP)
         hierarchy_path = cls._read_hierarchy_path(inst)
         netlist_cell_name = inst.property(PROPERTY_KEY__INSTANCE_INFO__CELL_NAME) or None
         netlist_lib_name = inst.property(PROPERTY_KEY__INSTANCE_INFO__LIB_NAME) or None
@@ -112,6 +114,7 @@ class CellInstanceConnectivityInfo:
             netlist_cell_name=netlist_cell_name,
             netlist_lib_name=netlist_lib_name,
             local_net_map=local_net_map,
+            global_net_map=global_net_map,
         )
         
         layout = ctx.layout
@@ -152,14 +155,15 @@ class CellInstanceConnectivityInfo:
         return result
         
     @classmethod
-    def _read_local_net_map(cls, inst: pya.Instance) -> Dict[str, str]:
+    def _read_net_map(cls, inst: pya.Instance, property_key: str) -> Dict[str, str]:
         """
-        Reads INSTANCE_INFO__LOCAL_NET_MAP from the instance (written by the
-        netlist importer) and parses it into a pin-name -> net-name dict.
+        Reads INSTANCE_INFO__LOCAL_NET_MAP / INSTANCE_INFO__GLOBAL_NET_MAP 
+        from the instance (written by the netlist importer) 
+        and parses it into a pin-name -> net-name dict.
         Returns an empty dict if the property is missing, empty, or malformed
         (e.g. layouts created before this property was introduced).
         """
-        raw = inst.property(PROPERTY_KEY__INSTANCE_INFO__LOCAL_NET_MAP)
+        raw = inst.property(property_key)
         if not raw:
             return {}
 
@@ -167,14 +171,14 @@ class CellInstanceConnectivityInfo:
             net_map = json.loads(raw)
         except (TypeError, ValueError) as e:
             if Debugging.DEBUG:
-                debug(f"CellInstanceConnectivityInfo._read_local_net_map: "
-                      f"failed to parse {PROPERTY_KEY__INSTANCE_INFO__LOCAL_NET_MAP} "
+                debug(f"CellInstanceConnectivityInfo._read_net_map: "
+                      f"failed to parse {property_key} "
                       f"({raw!r}) on instance {inst.cell.name}: {e}")
             return {}
 
         if not isinstance(net_map, dict):
             if Debugging.DEBUG:
-                debug(f"CellInstanceConnectivityInfo._read_local_net_map: "
+                debug(f"CellInstanceConnectivityInfo._read_net_map: "
                       f"expected a JSON object, got {type(net_map)} "
                       f"on instance {inst.cell.name}")
             return {}
@@ -198,6 +202,10 @@ class CellInstanceConnectivityInfo:
         and falling back to the PCell-local terminal name for instances
         that don't carry a net map yet.
         """
+        if Debugging.DEBUG:
+            debug(f"net_for_pin: pin.name={pin.name!r}, "
+                  f"local_net_map={self.local_net_map!r}")
+        
         return self.local_net_map.get(pin.name, pin.term_name)
         
         
